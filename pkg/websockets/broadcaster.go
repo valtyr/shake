@@ -9,7 +9,7 @@ import (
 func WebsocketBroadcaster(clientManager *ClientManager) {
 	channel := queue.SubscribeToEvents()
 	for {
-		event := (<-channel)
+		event := queue.ReadEvent(channel)
 		encoded, _ := json.Marshal(event)
 		clientManager.broadcast <- encoded
 	}

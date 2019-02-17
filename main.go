@@ -1,14 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 
-	influx "github.com/valtyr/shake/pkg/influx"
+	event "github.com/valtyr/shake/pkg/event"
 	logger "github.com/valtyr/shake/pkg/logger"
 	queue "github.com/valtyr/shake/pkg/queue"
 	websockets "github.com/valtyr/shake/pkg/websockets"
@@ -34,7 +34,7 @@ func main() {
 	queue.CreateQueue()
 
 	go logger.Logger()
-	go influx.InfluxPersistor()
+	// go influx.InfluxPersistor()
 	go websockets.WebsocketBroadcaster(clientManager)
 
 	fmt.Println("Running server!")
@@ -42,13 +42,21 @@ func main() {
 }
 
 func receiveEvent(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var e Event
-	err := decoder.Decode(&e)
-	if err != nil {
+	b, readError := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if readError != nil {
+		log.Fatal(readError)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	ev, eventError := event.DecodeJSON(b)
+	if eventError != nil {
+		log.Fatal(eventError)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	queue.PublishEvent(e)
+
+	queue.PublishEvent(ev)
 	w.WriteHeader(http.StatusOK)
 }

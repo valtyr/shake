@@ -9,7 +9,7 @@ import (
 func Logger() {
 	channel := queue.SubscribeToEvents()
 	for {
-		(<-channel)
-		fmt.Println("Event received")
+		event := queue.ReadEvent(channel)
+		fmt.Println("Event received: " + event.Type)
 	}
 }
